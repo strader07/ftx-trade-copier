@@ -13,7 +13,7 @@ from main.ftx.api import FtxClient
 from .config import MASTER_API, MASTER_SECRET, SLAVE_API, SLAVE_SECRET
 
 client1 = FtxClient(api_key=MASTER_API, api_secret=MASTER_SECRET)
-client2 = FtxClient(api_key=SLAVE_API, api_secret=SLAVE_SECRET)
+client2 = FtxClient(api_key=SLAVE_API, api_secret=SLAVE_SECRET, subaccount_name="Trader")
 
 
 def index(request, template_name="main/index.html"):
@@ -43,19 +43,20 @@ def check_bot_setting(user):
         return False
 
 
-def place_order(position):
-    print(position)
+def place_order(order):
+    print(order)
     try:
-        market = position["future"]
-        price = position["entryPrice"]
-        side = position["side"]
-        size = position["size"]
+        market = order["market"]
+        price = order["price"]
+        side = order["side"]
+        size = order["size"]
+        _type = order["type"]
     except Exception as e:
         print(e)
         return None
 
     try:
-        res = client.place_order(market, side, None, size, "market")
+        res = client2.place_order(market, side, None, size, _type)
     except Exception as e:
         print(e)
         res = {"success":False}
@@ -66,31 +67,29 @@ def place_order(position):
 def run_bot(user):
     loop = check_bot_setting(user)
     try:
-        last_positions = client1.get_account_info()["positions"]
+        last_orders = client1.get_order_history()
     except Exception as e:
         print(e)
-        last_positions = []
-    print(last_positions)
+        last_orders = []
+    last_orders = [order for order in last_orders if order["avgFillPrice"] or order["status"]!="closed"]
+    print(last_orders)
 
     while loop:
         print(datetime.now(), " ========")
         try:
-            new_positions = client1.get_account_info()["positions"]
+            new_orders = client1.get_order_history()
         except Exception as e:
-            new_positions = []
+            new_orders = []
+        new_orders = [order for order in new_orders if order["avgFillPrice"] or order["status"]!="closed"]
 
-        if len(new_positions) > len(last_positions):
-            positions = [pos for pos in new_positions if pos not in last_positions]
-        else:
-            positions = []
-        last_positions = new_positions
+        orders = [order for order in new_orders if order not in last_orders]
+        last_orders = new_orders
+        print(orders)
 
-        for position in positions:
-            res = place_order(position)
-            if not res["success"]:
-                print("order not placed")
-            else:
-                print("order success, here is the details: ", res["result"])
+        for order in orders:
+            res = place_order(order)
+            print("order success")
+            print(res)
 
         time.sleep(10)
         loop = check_bot_setting(user)
@@ -105,7 +104,6 @@ def start_bot(request):
     botSetting.started = "YES"
     botSetting.save()
 
-    # start the bot thread
     thr = Thread(target=run_bot, args=(request.user,))
     thr.start()
     return redirect("/")
