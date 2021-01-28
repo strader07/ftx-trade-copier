@@ -18,8 +18,6 @@ sub_clients = []
 for i in range(NUM_SLAVES):
     client = FtxClient(api_key=SLAVE_APIS[i], api_secret=SLAVE_SECRETS[i], subaccount_name=SLAVE_NAMES[i])
     sub_clients.append(client)
-mLeverage = MASTER_LEVERAGE
-sLeverage = SLAVE_LEVERAGE
 
 
 def index(request, template_name="main/index.html"):
@@ -49,7 +47,7 @@ def check_bot_setting(user):
         return False
 
 
-def place_order(order, mBalance):
+def place_order(order, mBalance, mLeverage):
     print(order)
     try:
         market = order["market"]
@@ -63,7 +61,9 @@ def place_order(order, mBalance):
 
     order_results = []
     for client in sub_clients:
-        sBalance = client.get_account_info()["freeCollateral"]
+        acc_info = client.get_account_info()
+        sBalance = acc_info["freeCollateral"]
+        sLeverage = acc_info["leverage"]
         size = round(_size * (sBalance / mBalance) * (sLeverage / mLeverage), 4)
         if size == 0:
             size = _size
@@ -89,7 +89,9 @@ def run_bot(user):
     last_orders = [order for order in last_orders if order["avgFillPrice"] or order["status"]!="closed"]
     print(len(last_orders))
 
-    mBalance = main_client.get_account_info()["freeCollateral"]
+    main_accinfo = main_client.get_account_info()
+    mBalance = main_accinfo["freeCollateral"]
+    mLeverage = main_accinfo["leverage"]
 
     while loop:
         print(datetime.now(), " ========")
@@ -104,7 +106,7 @@ def run_bot(user):
         print(orders)
 
         for order in orders:
-            results = place_order(order, mBalance)
+            results = place_order(order, mBalance, mLeverage)
             print("order status!")
             for res, i in zip(results, range(len(results))):
                 print(f"{i+1}-th account: \n", res)
