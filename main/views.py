@@ -13,7 +13,7 @@ import os
 from main.ftx.api import FtxClient
 from .config import *
 
-main_client = FtxClient(api_key=MASTER_API, api_secret=MASTER_SECRET)
+main_client = FtxClient(api_key=MASTER_API, api_secret=MASTER_SECRET, subaccount_name=MASTER_SUBACC_NAME)
 sub_clients = []
 for i in range(NUM_SLAVES):
     client = FtxClient(api_key=SLAVE_APIS[i], api_secret=SLAVE_SECRETS[i], subaccount_name=SLAVE_NAMES[i])

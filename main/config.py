@@ -4,6 +4,7 @@ load_dotenv()
 
 MASTER_API = os.environ.get('MASTER_API')
 MASTER_SECRET = os.environ.get('MASTER_SECRET')
+MASTER_SUBACC_NAME = os.environ.get('MASTER_SUBACC_NAME')
 
 try:
     NUM_SLAVES = int(os.environ.get('NUM_SLAVES'))
