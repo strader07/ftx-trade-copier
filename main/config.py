@@ -17,7 +17,9 @@ if NUM_SLAVES < 1:
 SLAVE_APIS = []
 SLAVE_SECRETS = []
 SLAVE_NAMES = []
+SLAVE_LEVERAGES = []
 for i in range(NUM_SLAVES):
     SLAVE_APIS.append(os.environ.get(f'SLAVE_API{i+1}'))
     SLAVE_SECRETS.append(os.environ.get(f'SLAVE_SECRET{i+1}'))
     SLAVE_NAMES.append(os.environ.get(f'SLAVE_SUBACC_NAME{i+1}'))
+    SLAVE_LEVERAGES.append(float(os.environ.get(f'SLAVE_LEVERAGE{i+1}')))

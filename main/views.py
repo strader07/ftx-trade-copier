@@ -60,10 +60,10 @@ def place_order(order, mBalance, mLeverage):
         return None
 
     order_results = []
-    for client in sub_clients:
+    for client, i in zip(sub_clients, range(len(sub_clients))):
         acc_info = client.get_account_info()
         sBalance = acc_info["freeCollateral"]
-        sLeverage = acc_info["leverage"]
+        sLeverage = SLAVE_LEVERAGES[i]
         size = round(_size * (sBalance / mBalance) * (sLeverage / mLeverage), 4)
         if size == 0:
             size = _size
