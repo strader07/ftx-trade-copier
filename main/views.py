@@ -18,7 +18,7 @@ sub_clients = []
 for i in range(NUM_SLAVES):
     client = FtxClient(api_key=SLAVE_APIS[i], api_secret=SLAVE_SECRETS[i], subaccount_name=SLAVE_NAMES[i])
     sub_clients.append(client)
-
+sub_clients = [sub_clients[3]]
 
 def index(request, template_name="main/index.html"):
     botSettings = BotSetting.objects.all()
@@ -35,11 +35,9 @@ def index(request, template_name="main/index.html"):
     return TemplateResponse(request, template_name, {"isStarted": isStarted})
 
 
-def check_bot_setting(user):
+def check_bot_setting():
     botSettings = BotSetting.objects.all()
-    for botSetting in botSettings:
-        if botSetting.user == user:
-            break
+    botSetting = botSettings[0]
 
     if botSetting.started == "YES":
         return True
@@ -79,8 +77,7 @@ def place_order(order, mBalance, mLeverage):
     return order_results
 
 
-def run_bot(user):
-    loop = check_bot_setting(user)
+def run_bot():
     try:
         last_orders = main_client.get_order_history()
     except Exception as e:
@@ -91,10 +88,29 @@ def run_bot(user):
 
     main_accinfo = main_client.get_account_info()
     mBalance = main_accinfo["freeCollateral"]
-    mLeverage = main_accinfo["leverage"]
+    mLeverage = MASTER_LEVERAGE
 
-    while loop:
+    while True:
+        loop = check_bot_setting()
+        if not loop:
+            print(datetime.now(), " ========")
+            print("Bot status: ", loop)
+            try:
+                last_orders = main_client.get_order_history()
+            except Exception as e:
+                print(e)
+                last_orders = []
+            last_orders = [order for order in last_orders if order["avgFillPrice"] or order["status"]!="closed"]
+            print(len(last_orders))
+
+            main_accinfo = main_client.get_account_info()
+            mBalance = main_accinfo["freeCollateral"]
+            mLeverage = MASTER_LEVERAGE
+            time.sleep(2)
+            continue
+
         print(datetime.now(), " ========")
+        print("Bot status: ", loop)
         try:
             new_orders = main_client.get_order_history()
         except Exception as e:
@@ -113,28 +129,35 @@ def run_bot(user):
 
         time.sleep(10)
         bal1 = main_client.get_account_info()["freeCollateral"]
-        loop = check_bot_setting(user)
+        loop = check_bot_setting()
+
+
+thr = Thread(name="run_bot", target=run_bot)
+thr.start()
+print("Bot thread started.\n")
 
 
 def start_bot(request):
     botSettings = BotSetting.objects.all()
-    for botSetting in botSettings:
-        if botSetting.user == request.user:
-            break
+    try:
+        botSetting = botSettings[0]
+    except Exception as e:
+        print("Bot setting is not set")
+        return redirect("/")
 
     botSetting.started = "YES"
     botSetting.save()
 
-    thr = Thread(target=run_bot, args=(request.user,))
-    thr.start()
     return redirect("/")
 
 
 def stop_bot(request):
     botSettings = BotSetting.objects.all()
-    for botSetting in botSettings:
-        if botSetting.user == request.user:
-            break
+    try:
+        botSetting = botSettings[0]
+    except Exception as e:
+        print("Bot setting is not set")
+        return redirect("/")
 
     botSetting.started = "NO"
     botSetting.save()
